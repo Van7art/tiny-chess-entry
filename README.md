@@ -109,6 +109,56 @@ reversed), and the packed artifact (`main.py`) was verified end-to-end
 against the source: a full game played through the packed file matched
 the source engine move for move.
 
+## Search behaviour under the node budget
+
+I timed the search itself on this machine, rather than relying on the
+trial averages:
+
+- From a Ruy Lopez middlegame (after 1.e4 e5 2.Nf3 Nc6 3.Bb5 a6), a single
+  move at the 60,000-node competition budget took 4.05 s of wall time:
+  depth 1 finished in 0.01 s (168 nodes), depth 2 in 0.03 s (1,318
+  nodes), depth 3 in 0.27 s (7,204 nodes), depth 4 in 1.19 s (42,231
+  nodes), and depth 5 ran into the budget at 60,001 nodes after 2.56 s.
+  The best move, Bxc6, was identical at every depth — the choice was
+  settled at depth 1 and the deeper searches only confirmed it.
+- From the start position with a 10,000,000-node budget, depth 4
+  completed in 0.29 s (13,187 nodes, roughly 45,000 nodes/s) and also
+  picked Nc3 at every depth.
+- The Kiwipete test position behaves very differently: even a depth-1
+  search there visits 84,265 nodes and takes 3.48 s, because the
+  position is full of captures and the quiescence search keeps
+  extending. That is more than the entire 60,000-node competition
+  budget spent before the main search gets past depth 1 — in sharp
+  tactical positions the quiescence search, not the main search, is
+  what eats the budget.
+
+## Move encoding and hash bookkeeping
+
+Two pieces of plumbing shape how the engine behaves, and neither is
+obvious from the outside:
+
+- A move is a single integer. Seven bits hold the from-square, seven
+  more the to-square, three bits the promotion piece, and four bits
+  the captured piece (stored offset by seven, so "no capture" still
+  encodes cleanly). The generator, the search and the undo logic all
+  pass that one number around, with no objects allocated per move.
+- The position hash is a Zobrist key from a table seeded with
+  `Random(9)`: one random 64-bit number per piece on each of the 128
+  squares, plus a side-to-move key that flips on every move.
+  Making and unmaking a move updates the hash incrementally — xor out
+  the departing piece, xor in the arriving one, xor the captured
+  piece and the side key — instead of recomputing it from scratch.
+- The same hash does two jobs. It keys the transposition table, which
+  is wiped clean once it passes 300,000 entries so memory stays
+  bounded, and it feeds the repetition table: every hash is counted
+  as it occurs, and the search scores a second occurrence of a
+  position as a draw (0) rather than searching it again.
+- There are two safety nets in the game loop. If the search returns
+  no move, or a move the environment does not list as legal, the
+  engine plays the first legal move instead of crashing. And if a
+  request to the environment fails, the process exits with that error
+  instead of retrying forever.
+
 ## How to run
 
 The packed engine is `main.py` (3,167 bytes, under the 4,096-byte cap).
