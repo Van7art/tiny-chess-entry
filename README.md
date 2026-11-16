@@ -9,6 +9,30 @@ An original chess engine in 4 KB of Python (stdlib only), built for the
 
 Referral: [`4e96xqxt`](https://make.fun/r/4e96xqxt)
 
+## Design
+
+The engine is a classical 0x88-board design, written to be as strong as
+possible inside 4,096 bytes of Python:
+
+- **Board:** 0x88 representation, so off-board detection is a single
+  bit test. Move generation is legal-move based, with repetition
+  detection from the game history.
+- **Search:** negamax alpha-beta with iterative deepening to a fixed
+  node budget of 60,000 nodes per move — no clock, no randomness, so
+  the search is fully deterministic.
+- **Quiescence:** quiescence search over captures, promotions and
+  replies to check, with delta pruning and capture-only move generation
+  inside quiescence, so the horizon effect is kept under control.
+- **Transposition table:** Zobrist-hashed table storing best moves and
+  bounds across the search.
+- **Move ordering:** MVV-LVA capture ordering, transposition-table move
+  first, then killer moves — the ordering that keeps the alpha-beta
+  window as tight as possible.
+- **Pruning:** null-move pruning in the main search, delta pruning in
+  quiescence.
+- **Evaluation:** material plus formula piece-square terms, a bishop-pair
+  bonus, and a king-centrality / back-rank term.
+
 ## How it plays
 
 - 0x88 board, negamax alpha-beta with iterative deepening to a fixed node
@@ -38,6 +62,25 @@ Referral: [`4e96xqxt`](https://make.fun/r/4e96xqxt)
   4 losses (beat depth-2 and depth-4); trial-1: 2 wins, 0 draws, 4 losses.
   Combined practice Elo ≈ 1099 (below the 1154 entry floor — see below).
 - Average move time ≈ 2.1 s on this machine (limit 10 s/move).
+
+All numbers below were measured locally against the kit's own tooling and
+an independent reference move generator — nothing here is estimated.
+
+- Perft (leaf-node counts match the reference exactly):
+  - startpos, depth 4: 197,281 nodes.
+  - Kiwipete, depth 4: 4,085,603 nodes.
+  - En-passant, promotion and tactical test positions, depths 1–4: all
+    match the reference.
+- Practice trials against the house gauntlet (6 games each):
+  - Trial 0: 2 wins, 0 draws, 4 losses — beat the depth-2 (855) and
+    depth-4 (1199) anchors; lost to depth-3, nodes-100k, nodes-250k and
+    nodes-500k.
+  - Trial 1: 2 wins, 0 draws, 4 losses — the same pattern with colours
+    reversed.
+- Combined practice Elo ≈ 1099 (maximum-likelihood estimate against the
+  gauntlet anchors). That is below the 1154 practice floor, so the entry
+  may not advance to the scored final and is unlikely to place in the
+  top 10 — but it is a correct, legal, fully deterministic entry.
 
 ## Warning
 
@@ -83,21 +126,11 @@ no clock and no randomness anywhere in the search: given the same
 position it always picks the same move, so repeated runs are fully
 deterministic.
 
-All numbers below were measured locally against the kit's own tooling and
-an independent reference move generator — nothing here is estimated.
+## Changelog
 
-- Perft (leaf-node counts match the reference exactly):
-  - startpos, depth 4: 197,281 nodes.
-  - Kiwipete, depth 4: 4,085,603 nodes.
-  - En-passant, promotion and tactical test positions, depths 1–4: all
-    match the reference.
-- Practice trials against the house gauntlet (6 games each):
-  - Trial 0: 2 wins, 0 draws, 4 losses — beat the depth-2 (855) and
-    depth-4 (1199) anchors; lost to depth-3, nodes-100k, nodes-250k and
-    nodes-500k.
-  - Trial 1: 2 wins, 0 draws, 4 losses — the same pattern with colours
-    reversed.
-- Combined practice Elo ≈ 1099 (maximum-likelihood estimate against the
-  gauntlet anchors). That is below the 1154 practice floor, so the entry
-  may not advance to the scored final and is unlikely to place in the
-  top 10 — but it is a correct, legal, fully deterministic entry.
+- v1: packed engine (`main.py`, 3,167 bytes), perft-verified against an
+  independent reference on startpos, Kiwipete, en-passant/promotion and
+  tactical positions.
+- v2: README revised with measured results (practice Elo ≈ 1099, trial
+  scores 2-4 / 2-4) and design notes (0x88 board, negamax alpha-beta,
+  60,000-node budget, quiescence, transposition table).
