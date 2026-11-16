@@ -45,3 +45,39 @@ Measured practice strength is around Elo 1099, below the 1154 practice
 floor, so this entry may not advance to the scored final. It is a correct,
 deterministic, fully legal engine, but a Python engine at this node rate
 cannot match the depth of the compiled house engines.
+
+## How to run
+
+The packed engine is `main.py` (3,167 bytes, under the 4,096-byte cap).
+Run it with a plain Python 3 interpreter — no third-party packages needed:
+
+```sh
+python3 main.py
+```
+
+In the competition it is run as `python3 -P -s main.py` with
+`MAKEFUN_ENV_URL` set, and it plays the trial through the environment API.
+
+The engine searches to a fixed budget of 60,000 nodes per move. There is
+no clock and no randomness anywhere in the search: given the same
+position it always picks the same move, so repeated runs are fully
+deterministic.
+
+All numbers below were measured locally against the kit's own tooling and
+an independent reference move generator — nothing here is estimated.
+
+- Perft (leaf-node counts match the reference exactly):
+  - startpos, depth 4: 197,281 nodes.
+  - Kiwipete, depth 4: 4,085,603 nodes.
+  - En-passant, promotion and tactical test positions, depths 1–4: all
+    match the reference.
+- Practice trials against the house gauntlet (6 games each):
+  - Trial 0: 2 wins, 0 draws, 4 losses — beat the depth-2 (855) and
+    depth-4 (1199) anchors; lost to depth-3, nodes-100k, nodes-250k and
+    nodes-500k.
+  - Trial 1: 2 wins, 0 draws, 4 losses — the same pattern with colours
+    reversed.
+- Combined practice Elo ≈ 1099 (maximum-likelihood estimate against the
+  gauntlet anchors). That is below the 1154 practice floor, so the entry
+  may not advance to the scored final and is unlikely to place in the
+  top 10 — but it is a correct, legal, fully deterministic entry.
