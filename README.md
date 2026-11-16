@@ -46,6 +46,26 @@ floor, so this entry may not advance to the scored final. It is a correct,
 deterministic, fully legal engine, but a Python engine at this node rate
 cannot match the depth of the compiled house engines.
 
+## Limits
+
+The hard limit is Python's node rate: about 28,000 nodes/second on this
+machine, so the 60,000-node budget buys an effective depth of 3 (depth 4
+needs roughly 200,000 nodes). The compiled house engines search far deeper
+at the same time budget, and no amount of tuning inside 4 KB of Python
+closes that gap. Raising the budget to L=80,000 was tested and gave no
+gain (1.5/6 in the trial, a game-3 win turning into a draw), so the
+budget stays at 60,000.
+
+## Reproducibility
+
+Every move searches the same fixed budget of 60,000 nodes — no clock, no
+randomness, no time-dependent cutoffs. Given the same position the engine
+always picks the same move, so any run is exactly repeatable. The two
+practice trials gave identical 2-4 results (same pattern, colours
+reversed), and the packed artifact (`main.py`) was verified end-to-end
+against the source: a full game played through the packed file matched
+the source engine move for move.
+
 ## How to run
 
 The packed engine is `main.py` (3,167 bytes, under the 4,096-byte cap).
